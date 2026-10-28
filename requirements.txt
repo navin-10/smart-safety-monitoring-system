@@ -1,0 +1,7 @@
+flask==2.3.3
+ultralytics==8.3.0
+torch==2.5.1
+opencv-python==4.9.0.80
+pyserial==3.5
+numpy==1.26.4
+# winsound is built‑in on Windows, no pip package required

@@ -1,0 +1,58 @@
+# =====================================================================
+# Git Ignore Configuration for Smart Safety Monitoring System
+# =====================================================================
+
+# --- Virtual Environments ---
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# --- Python Bytecode & Cache ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+
+# --- Runtime Logs & Diagnostic Outputs ---
+*.log
+app_full_log.txt
+app_output.txt
+
+# --- Backup Files ---
+*.bak
+*.audit_backup
+*.tmp
+*~
+
+# --- Generated Violation Snapshots ---
+# Keep the directory tracked via .gitkeep, but do not commit image evidence
+static/violations/*.jpg
+static/violations/*.jpeg
+static/violations/*.png
+!static/violations/.gitkeep
+
+# Stray local test folder
+/violations/
+
+# --- Environment & Secret Credentials ---
+.env
+.env.*
+*.pem
+*.key
+*.cert
+
+# --- Testing & Coverage Artifacts ---
+.pytest_cache/
+.coverage
+htmlcov/
+
+# --- IDE & Operating System Artifacts ---
+.vscode/
+.idea/
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+desktop.ini

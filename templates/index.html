@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Industrial Safety Monitoring System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ── Reset & Base ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: 'Inter', sans-serif; background: #0d1117; color: #c9d1d9; }
+
+    /* ── Layout Shell ─────────────────────────────────── */
+    .shell { display: flex; height: 100vh; overflow: hidden; }
+
+    /* ── Sidebar ──────────────────────────────────────── */
+    .sidebar {
+      width: 200px; min-width: 200px;
+      background: #161b22;
+      display: flex; flex-direction: column;
+      border-right: 1px solid #21262d;
+    }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 10px;
+      padding: 18px 16px;
+      border-bottom: 1px solid #21262d;
+    }
+    .sidebar-logo .icon-shield {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: linear-gradient(135deg, #238636, #2ea043);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .sidebar-logo span { font-size: 13px; font-weight: 600; color: #e6edf3; line-height: 1.3; }
+    .nav { flex: 1; padding: 12px 0; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px; font-size: 13.5px; color: #8b949e;
+      cursor: pointer; transition: background .15s, color .15s;
+      border-radius: 6px; margin: 2px 8px;
+    }
+    .nav-item:hover { background: #21262d; color: #e6edf3; }
+    .nav-item.active { background: #1f6feb22; color: #58a6ff; border-left: 3px solid #58a6ff; }
+    .nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+    .sidebar-footer { padding: 12px 16px; border-top: 1px solid #21262d; font-size: 11px; color: #484f58; }
+
+    /* ── Main Content ─────────────────────────────────── */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* ── Header ──────────────────────────────────────── */
+    .header {
+      background: #161b22; border-bottom: 1px solid #21262d;
+      padding: 0 20px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+    }
+    .header-left h1 { font-size: 17px; font-weight: 600; color: #e6edf3; }
+    .header-left p { font-size: 11.5px; color: #8b949e; margin-top: 2px; }
+    .header-right { display: flex; align-items: center; gap: 16px; }
+    .system-status { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #3fb950; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #3fb950; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .header-time { font-size: 12px; color: #8b949e; }
+
+    /* ── Scrollable Body ──────────────────────────────── */
+    .body { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 16px; }
+
+    /* ── Summary Cards Row ────────────────────────────── */
+    .cards-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+    .card {
+      background: #161b22; border: 1px solid #21262d; border-radius: 10px;
+      padding: 14px 16px; display: flex; align-items: flex-start; gap: 12px;
+      transition: border-color .2s;
+    }
+    .card:hover { border-color: #30363d; }
+    .card-icon {
+      width: 42px; height: 42px; border-radius: 10px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
+    }
+    .card-icon.blue   { background: #1f3a5f; color: #58a6ff; }
+    .card-icon.red    { background: #3d1f1f; color: #ff7b72; }
+    .card-icon.green  { background: #1f3d1f; color: #3fb950; }
+    .card-icon.orange { background: #3d2d1f; color: #d29922; }
+    .card-icon.purple { background: #2d1f3d; color: #bc8cff; }
+    .card-body { flex: 1; min-width: 0; }
+    .card-label { font-size: 11px; color: #8b949e; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
+    .card-value { font-size: 24px; font-weight: 700; color: #e6edf3; line-height: 1.2; margin-top: 2px; }
+    .card-sub   { font-size: 11px; margin-top: 3px; }
+    .sub-ok      { color: #3fb950; }
+    .sub-warn    { color: #d29922; }
+    .sub-danger  { color: #ff7b72; }
+    .sub-neutral { color: #8b949e; }
+    .sub-disconn { color: #bc8cff; font-weight: 600; }
+
+    /* ── View Panes ───────────────────────────────────── */
+    .view-pane { display: flex; flex-direction: column; gap: 16px; width: 100%; }
+    #livefeed-cam-slot .camera-panel { width: 100%; border: 1px solid #21262d; border-radius: 10px; }
+    #livefeed-cam-slot .camera-feed { min-height: 520px; }
+
+    /* ── Mid Row ──────────────────────────────────────── */
+    .mid-row { display: grid; grid-template-columns: 1fr 400px; gap: 16px; }
+
+    /* ── Camera Panel ─────────────────────────────────── */
+    .camera-panel {
+      background: #161b22; border: 1px solid #21262d; border-radius: 10px;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; border-bottom: 1px solid #21262d; flex-shrink: 0;
+    }
+    .panel-title { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; color: #e6edf3; }
+    .live-badge {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 11px; color: #ff7b72; font-weight: 600;
+    }
+    .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #ff7b72; animation: pulse 1.2s infinite; }
+    .camera-feed {
+      flex: 1; position: relative; background: #0d1117; min-height: 320px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #liveImg {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .camera-overlay-bottom {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: linear-gradient(transparent, rgba(0,0,0,.7));
+      padding: 8px 12px;
+      display: flex; justify-content: space-between; align-items: flex-end;
+    }
+    .cam-label { font-size: 11px; color: #8b949e; }
+    .cam-stats { font-size: 11px; color: #c9d1d9; }
+    .cam-unavail {
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      gap: 8px; color: #8b949e; text-align: center; padding: 20px; height: 100%;
+    }
+    .cam-unavail .big-icon { font-size: 42px; opacity: .4; }
+    .cam-unavail p { font-size: 13px; }
+
+    /* ── Right Panel ──────────────────────────────────── */
+    .right-col { display: flex; flex-direction: column; gap: 16px; }
+
+    /* ── Worker Table ─────────────────────────────────── */
+    .worker-panel {
+      background: #161b22; border: 1px solid #21262d; border-radius: 10px; overflow: hidden;
+    }
+    .worker-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .worker-table thead th {
+      padding: 8px 10px; background: #1c2128; color: #8b949e;
+      font-weight: 500; text-align: left; border-bottom: 1px solid #21262d;
+    }
+    .worker-table tbody tr { border-bottom: 1px solid #21262d; transition: background .1s; }
+    .worker-table tbody tr:last-child { border-bottom: none; }
+    .worker-table tbody tr:hover { background: #1c2128; }
+    .worker-table td { padding: 8px 10px; color: #c9d1d9; }
+    .ppe-tag {
+      display: inline-block; font-size: 10px; padding: 1px 6px;
+      border-radius: 4px; margin: 1px; background: #1f3a5f; color: #58a6ff;
+    }
+    .ppe-tag.missing { background: #3d1f1f; color: #ff7b72; }
+    .status-badge {
+      display: inline-block; font-size: 10px; font-weight: 600;
+      padding: 2px 8px; border-radius: 20px;
+    }
+    .status-badge.safe       { background: #1a3d2a; color: #3fb950; }
+    .status-badge.violation  { background: #3d1f1f; color: #ff7b72; }
+    .worker-empty { text-align: center; color: #484f58; padding: 20px; font-size: 12px; }
+
+    /* ── Gas Sensor Panel ─────────────────────────────── */
+    .gas-panel {
+      background: #161b22; border: 1px solid #21262d; border-radius: 10px;
+    }
+    .gas-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px 14px; }
+    .gas-item label { font-size: 11px; color: #8b949e; }
+    .gas-item .gas-val { font-size: 26px; font-weight: 700; color: #e6edf3; line-height: 1.1; }
+    .gas-item .gas-sub { font-size: 11px; }
+    .gas-ok     { color: #3fb950; }
+    .gas-danger { color: #ff7b72; }
+
+    /* ── Bottom Row ───────────────────────────────────── */
+    .bottom-row { display: grid; grid-template-columns: 1fr 340px 200px; gap: 16px; }
+
+    /* ── Violations Table ─────────────────────────────── */
+    .violations-panel {
+      background: #161b22; border: 1px solid #21262d; border-radius: 10px; overflow: hidden;
+    }
+    .viol-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .viol-table thead th {
+      padding: 8px 10px; background: #1c2128; color: #8b949e;
+      font-weight: 500; text-align: left; border-bottom: 1px solid #21262d;
+    }
+    .viol-table tbody tr { border-bottom: 1px solid #21262d; }
+    .viol-table tbody tr:last-child { border-bottom: none; }
+    .viol-table td { padding: 8px 10px; color: #c9d1d9; vertical-align: middle; }
+    .viol-img { width: 42px; height: 32px; border-radius: 4px; object-fit: cover; border: 1px solid #21262d; }
+    .viol-img-placeholder { width: 42px; height: 32px; border-radius: 4px; background: #21262d; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .viol-view-btn {
+      font-size: 11px; color: #58a6ff; cursor: pointer; text-decoration: none;
+      display: flex; align-items: center; gap: 3px;
+    }
+    .viol-view-btn:hover { text-decoration: underline; }
+    .issue-badge {
+      display: inline-block; font-size: 10px; font-weight: 600;
+      padding: 2px 8px; border-radius: 12px;
+      background: #3d1f1f; color: #ff7b72;
+    }
+    .viol-empty { text-align: center; color: #484f58; padding: 18px; font-size: 12px; }
+
+    /* ── Arduino Controls ─────────────────────────────── */
+    .arduino-panel {
+      background: #161b22; border: 1px solid #21262d; border-radius: 10px;
+    }
+    .control-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; border-bottom: 1px solid #21262d; font-size: 13px;
+    }
+    .control-item:last-child { border-bottom: none; }
+    .control-label { display: flex; align-items: center; gap: 8px; color: #c9d1d9; }
+    .control-label .ci { font-size: 15px; }
+    .toggle {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 11px; font-weight: 600;
+    }
+    .toggle-dot { width: 28px; height: 16px; border-radius: 8px; background: #30363d; position: relative; transition: background .2s; }
+    .toggle-dot.on { background: #238636; }
+    .toggle-dot::after {
+      content: ''; position: absolute; top: 2px; left: 2px;
+      width: 12px; height: 12px; border-radius: 50%; background: #fff;
+      transition: transform .2s;
+    }
+    .toggle-dot.on::after { transform: translateX(12px); }
+    .toggle-label { color: #8b949e; }
+    .toggle-label.on { color: #3fb950; }
+
+    /* ── Quick Actions ────────────────────────────────── */
+    .quick-panel {
+      background: #161b22; border: 1px solid #21262d; border-radius: 10px;
+    }
+    .btn-action {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      width: calc(100% - 28px); margin: 8px 14px;
+      padding: 9px 14px; border-radius: 7px; border: none;
+      font-size: 12.5px; font-weight: 600; cursor: pointer; transition: filter .15s;
+    }
+    .btn-action:hover { filter: brightness(1.15); }
+    .btn-refresh { background: #1f6feb; color: #fff; }
+    .btn-violations { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
+
+    /* ── Panel Header ─────────────────────────────────── */
+    .ph { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid #21262d; }
+    .ph-icon { font-size: 15px; }
+    .ph-title { font-size: 13px; font-weight: 600; color: #e6edf3; }
+    .ph-warn { color: #d29922; }
+    .ph-info { color: #58a6ff; }
+    .ph-ok   { color: #3fb950; }
+    .ph-ard  { color: #bc8cff; }
+
+    /* ── Scrollbar ────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+  </style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ── Sidebar ── -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="icon-shield">🛡️</div>
+      <span>Safety<br>Monitor</span>
+    </div>
+    <div class="nav">
+      <div class="nav-item active" id="nav-dashboard" onclick="switchView('dashboard')"><span class="nav-icon">🏠</span> Dashboard</div>
+      <div class="nav-item" id="nav-livefeed" onclick="switchView('livefeed')"><span class="nav-icon">📹</span> Live Feed</div>
+      <div class="nav-item" id="nav-violations" onclick="switchView('violations')"><span class="nav-icon">⚠️</span> Violations</div>
+      <div class="nav-item" id="nav-telemetry" onclick="switchView('telemetry')"><span class="nav-icon">📊</span> Telemetry</div>
+      <div class="nav-item" id="nav-settings" onclick="switchView('settings')"><span class="nav-icon">⚙️</span> Settings</div>
+    </div>
+    <div class="sidebar-footer">YOLO11 · PPE Detection</div>
+  </nav>
+
+  <!-- ── Main ── -->
+  <div class="main">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <h1>Industrial Safety Monitoring System</h1>
+        <p>AI-Powered PPE Detection | Gas Monitoring | Worker Safety</p>
+      </div>
+      <div class="header-right">
+        <div class="system-status"><div class="status-dot"></div> System Online</div>
+        <div class="header-time" id="clock">--</div>
+      </div>
+    </header>
+
+    <!-- Scrollable body -->
+    <div class="body">
+
+      <!-- ── 1. DASHBOARD VIEW ── -->
+      <div id="view-dashboard" class="view-pane" style="display:flex;">
+
+        <!-- Summary Cards -->
+        <div class="cards-row">
+          <div class="card">
+            <div class="card-icon blue">👷</div>
+            <div class="card-body">
+              <div class="card-label">Safe Workers</div>
+              <div class="card-value" id="c-safe">0</div>
+              <div class="card-sub sub-neutral" id="c-safe-sub">No workers detected</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-icon red">⚠️</div>
+            <div class="card-body">
+              <div class="card-label">PPE Violations</div>
+              <div class="card-value" id="c-viol">0</div>
+              <div class="card-sub sub-ok" id="c-viol-sub">All compliant</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-icon green">💨</div>
+            <div class="card-body">
+              <div class="card-label">Gas Level</div>
+              <div class="card-value" id="c-gas">N/A</div>
+              <div class="card-sub sub-neutral" id="c-gas-sub">Sensor Disconnected</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-icon orange">🌀</div>
+            <div class="card-body">
+              <div class="card-label">Fan Status</div>
+              <div class="card-value" id="c-fan" style="font-size:18px;margin-top:4px">OFFLINE</div>
+              <div class="card-sub sub-neutral" id="c-fan-sub">Arduino Disconnected</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-icon purple">📡</div>
+            <div class="card-body">
+              <div class="card-label">Arduino Connection</div>
+              <div class="card-value sub-disconn" id="c-conn" style="font-size:14px;margin-top:4px">DISCONNECTED</div>
+              <div class="card-sub sub-neutral" id="c-conn-sub">Connecting...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mid Row: Camera + Right Panel -->
+        <div class="mid-row">
+
+          <!-- Camera Slot -->
+          <div id="dashboard-cam-slot">
+            <div class="camera-panel" id="cameraPanel">
+              <div class="panel-header">
+                <div class="panel-title">📷 Live Camera Feed</div>
+                <div class="live-badge"><div class="live-dot"></div> Live</div>
+              </div>
+              <div class="camera-feed">
+                <img id="liveImg" src="/video_feed" alt="Live feed"
+                  onerror="this.style.display='none';document.getElementById('camUnavail').style.display='flex'">
+                <div class="cam-unavail" id="camUnavail">
+                  <div class="big-icon">📷</div>
+                  <p>Camera not available<br><small>Check camera connection and restart the server.</small></p>
+                </div>
+                <div class="camera-overlay-bottom">
+                  <span class="cam-label">PPE Detection – YOLO11</span>
+                  <span class="cam-stats" id="cam-stats">Waiting for detection…</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        <!-- Right Column -->
+        <div class="right-col">
+
+          <!-- Worker Safety Table -->
+          <div class="worker-panel">
+            <div class="ph"><span class="ph-icon ph-info">👷</span><span class="ph-title">Worker Safety Status</span></div>
+            <table class="worker-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>PPE Status</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="workerTableBody">
+                <tr><td colspan="3" class="worker-empty">No workers detected</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Gas Sensor -->
+          <div class="gas-panel">
+            <div class="ph"><span class="ph-icon" style="color:#58a6ff">💧</span><span class="ph-title">Gas Sensor Status</span></div>
+            <div class="gas-grid">
+              <div class="gas-item">
+                <div class="label">Gas Concentration</div>
+                <div class="gas-val" id="g-ppm">0 ppm</div>
+                <div class="gas-sub gas-ok" id="g-status">Normal</div>
+              </div>
+              <div class="gas-item">
+                <div class="label">Sensor Reading</div>
+                <div class="gas-val" id="g-raw">0</div>
+                <div class="gas-sub sub-neutral">(Raw Value)</div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /right-col -->
+      </div><!-- /mid-row -->
+
+      <!-- Bottom Row -->
+      <div class="bottom-row">
+
+        <!-- Recent Violations -->
+        <div class="violations-panel">
+          <div class="ph"><span class="ph-icon ph-warn">⚠️</span><span class="ph-title">Recent Violations</span></div>
+          <table class="viol-table">
+            <thead>
+              <tr><th>Time</th><th>Worker</th><th>Issue</th><th>Image</th></tr>
+            </thead>
+            <tbody id="violTableBody">
+              <tr><td colspan="4" class="viol-empty">No violations recorded yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Arduino Controls -->
+        <div class="arduino-panel">
+          <div class="ph">
+            <span class="ph-icon ph-ard">⚙️</span>
+            <span class="ph-title">System Controls (Arduino)</span>
+            <span style="font-size:11px;color:#8b949e;margin-left:auto" id="ctrl-last-seen">Telemetry: --</span>
+          </div>
+          <div class="control-item">
+            <div class="control-label"><span class="ci">🌀</span> Fan</div>
+            <div class="toggle">
+              <div class="toggle-dot" id="t-fan"></div>
+              <span class="toggle-label" id="tl-fan">OFF</span>
+            </div>
+          </div>
+          <div class="control-item">
+            <div class="control-label"><span class="ci">🔊</span> Buzzer</div>
+            <div class="toggle">
+              <div class="toggle-dot" id="t-buzzer"></div>
+              <span class="toggle-label" id="tl-buzzer">OFF</span>
+            </div>
+          </div>
+          <div class="control-item">
+            <div class="control-label"><span class="ci">💡</span> LED</div>
+            <div class="toggle">
+              <div class="toggle-dot" id="t-led"></div>
+              <span class="toggle-label" id="tl-led">OFF</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-panel">
+          <div class="ph"><span class="ph-icon ph-info">🔄</span><span class="ph-title">Quick Actions</span></div>
+          <button class="btn-action btn-refresh" onclick="fetchAll()">🔄 Refresh Data</button>
+          <button class="btn-action btn-violations" onclick="scrollToViolations()">⚠️ View Violations</button>
+        </div>
+
+      </div><!-- /bottom-row -->
+    </div><!-- /view-dashboard -->
+
+    <!-- ── 2. LIVE FEED VIEW ── -->
+    <div id="view-livefeed" class="view-pane" style="display:none;">
+      <div class="panel-header" style="background:#161b22;border:1px solid #21262d;border-radius:10px;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;">
+        <div class="panel-title" style="font-size:15px;display:flex;align-items:center;gap:10px;">
+          <span>📹</span>
+          <span>Live Camera Feed &amp; Real-Time PPE Analytics</span>
+        </div>
+        <div class="live-badge" style="display:flex;align-items:center;gap:6px;font-size:12px;">
+          <div class="live-dot"></div> DIRECTSHOW STREAM (640x480)
+        </div>
+      </div>
+
+      <!-- Camera Slot in Live Feed -->
+      <div id="livefeed-cam-slot" style="width:100%;"></div>
+
+      <div class="cards-row" style="grid-template-columns: repeat(4, 1fr);">
+        <div class="card">
+          <div class="card-icon blue">👁️</div>
+          <div class="card-body">
+            <div class="card-label">Inference Model</div>
+            <div class="card-value" style="font-size:18px;">YOLO11</div>
+            <div class="card-sub sub-ok">models/best.pt</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-icon green">📐</div>
+          <div class="card-body">
+            <div class="card-label">Resolution / Backend</div>
+            <div class="card-value" style="font-size:18px;">640 × 480</div>
+            <div class="card-sub sub-ok">cv2.CAP_DSHOW</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-icon purple">🛡️</div>
+          <div class="card-body">
+            <div class="card-label">Monitored Items</div>
+            <div class="card-value" style="font-size:18px;">4 PPE Classes</div>
+            <div class="card-sub sub-ok">Helmet, Vest, Glass, Glove</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-icon orange">⏱️</div>
+          <div class="card-body">
+            <div class="card-label">Alarm Cooldown</div>
+            <div class="card-value" style="font-size:18px;">4.0s Window</div>
+            <div class="card-sub sub-neutral">Snapshot Debouncing</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 3. VIOLATIONS VIEW ── -->
+    <div id="view-violations" class="view-pane" style="display:none;">
+      <div class="panel-header" style="background:#161b22;border:1px solid #21262d;border-radius:10px;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;">
+        <div class="panel-title" style="font-size:15px;display:flex;align-items:center;gap:10px;">
+          <span>⚠️</span>
+          <span>PPE Violations &amp; Incident Records</span>
+        </div>
+        <button class="btn-action btn-refresh" style="width:auto;margin:0;padding:6px 16px;" onclick="fetchViolations()">🔄 Refresh Violations</button>
+      </div>
+
+      <div class="cards-row" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="card">
+          <div class="card-icon red">🚨</div>
+          <div class="card-body">
+            <div class="card-label">Total Logged Violations</div>
+            <div class="card-value" id="viol-total-count">0</div>
+            <div class="card-sub sub-neutral">Fetched from /api/violations</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-icon orange">📁</div>
+          <div class="card-body">
+            <div class="card-label">Snapshot Storage</div>
+            <div class="card-value" style="font-size:16px;margin-top:6px;">static/violations/</div>
+            <div class="card-sub sub-ok">JPEG Snapshot Capture</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-icon blue">⚡</div>
+          <div class="card-body">
+            <div class="card-label">Detection Algorithm</div>
+            <div class="card-value" style="font-size:16px;margin-top:6px;">Spatial Association</div>
+            <div class="card-sub sub-ok">Automatic Audio &amp; Evidence Log</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="violations-panel">
+        <div class="ph"><span class="ph-icon ph-warn">📋</span><span class="ph-title">Complete Violation History</span></div>
+        <table class="viol-table">
+          <thead>
+            <tr>
+              <th style="width:200px;">Timestamp</th>
+              <th style="width:140px;">Worker / Source</th>
+              <th>Violation Description</th>
+              <th style="width:160px;">Visual Evidence</th>
+            </tr>
+          </thead>
+          <tbody id="violTableBodyFull">
+            <tr><td colspan="4" class="viol-empty">No violations recorded yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── 4. TELEMETRY VIEW ── -->
+    <div id="view-telemetry" class="view-pane" style="display:none;">
+      <div class="panel-header" style="background:#161b22;border:1px solid #21262d;border-radius:10px;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;">
+        <div class="panel-title" style="font-size:15px;display:flex;align-items:center;gap:10px;">
+          <span>📊</span>
+          <span>Live Hardware &amp; Environmental Telemetry</span>
+        </div>
+        <span style="font-size:12px;color:#3fb950;display:flex;align-items:center;gap:6px;">
+          <div class="status-dot"></div> Live Polling (/api/telemetry)
+        </span>
+      </div>
+
+      <div class="cards-row" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="card">
+          <div class="card-icon green">💨</div>
+          <div class="card-body">
+            <div class="card-label">MQ-2 Gas Sensor</div>
+            <div class="card-value" id="tel-gas-raw">0 ADC</div>
+            <div class="card-sub" id="tel-gas-sub">SAFE</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-icon orange">🌀</div>
+          <div class="card-body">
+            <div class="card-label">Fan Relay Actuation</div>
+            <div class="card-value" id="tel-fan-state">OFF</div>
+            <div class="card-sub" id="tel-fan-sub">Commanded OFF (Pin 7, Active-LOW)</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-icon purple">📡</div>
+          <div class="card-body">
+            <div class="card-label">Microcontroller Link</div>
+            <div class="card-value" id="tel-conn-state" style="font-size:18px;">DISCONNECTED</div>
+            <div class="card-sub" id="tel-conn-sub">Port: COM23 @ 9600 baud</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cards-row" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="card">
+          <div class="card-icon blue">🔊</div>
+          <div class="card-body">
+            <div class="card-label">Audible Alarm (Buzzer)</div>
+            <div class="card-value" id="tel-buzzer-state">OFF</div>
+            <div class="card-sub sub-neutral">Pin 8 (Active-HIGH)</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-icon red">💡</div>
+          <div class="card-body">
+            <div class="card-label">Visual Warning (Red LED)</div>
+            <div class="card-value" id="tel-led-state">OFF</div>
+            <div class="card-sub sub-neutral">Pin 9 (Active-HIGH)</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-icon blue">👷</div>
+          <div class="card-body">
+            <div class="card-label">Worker Safety Status</div>
+            <div class="card-value" id="tel-workers">0 / 0</div>
+            <div class="card-sub" id="tel-workers-sub">Overall: NORMAL</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="violations-panel">
+        <div class="ph">
+          <span class="ph-icon ph-info">📡</span>
+          <span class="ph-title">Live JSON Telemetry Payload (Direct from /api/telemetry)</span>
+          <button class="btn-action btn-refresh" style="width:auto;margin:0 0 0 auto;padding:4px 12px;font-size:11px;" onclick="fetchTelemetry()">Refresh JSON</button>
+        </div>
+        <div style="padding:14px;">
+          <pre id="telemetryJsonPre" style="background:#0d1117;padding:16px;border-radius:8px;font-family:Consolas, 'Courier New', monospace;font-size:12.5px;color:#58a6ff;overflow-x:auto;border:1px solid #21262d;margin:0;max-height:280px;"></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 5. SETTINGS VIEW ── -->
+    <div id="view-settings" class="view-pane" style="display:none;">
+      <div class="panel-header" style="background:#161b22;border:1px solid #21262d;border-radius:10px;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;">
+        <div class="panel-title" style="font-size:15px;display:flex;align-items:center;gap:10px;">
+          <span>⚙️</span>
+          <span>System Configuration &amp; Active Parameters</span>
+        </div>
+        <span style="font-size:12px;color:#8b949e;">Backend configuration state</span>
+      </div>
+
+      <div class="mid-row" style="grid-template-columns: 1fr 1fr;">
+        <!-- Serial & Hardware Settings -->
+        <div class="worker-panel">
+          <div class="ph"><span class="ph-icon ph-ard">🔌</span><span class="ph-title">Hardware Serial Configuration</span></div>
+          <table class="worker-table">
+            <tbody>
+              <tr><td style="color:#8b949e;width:200px;">Arduino Serial Port</td><td id="set-port" style="font-weight:600;color:#58a6ff;">COM23</td></tr>
+              <tr><td style="color:#8b949e;">Baud Rate</td><td id="set-baud" style="font-weight:600;color:#e6edf3;">9600 baud</td></tr>
+              <tr><td style="color:#8b949e;">Connection Status</td><td id="set-conn-status">Checking...</td></tr>
+              <tr><td style="color:#8b949e;">Serial Timeout</td><td>2.0 seconds</td></tr>
+              <tr><td style="color:#8b949e;">Stale Link Timeout</td><td>5.0 seconds</td></tr>
+              <tr><td style="color:#8b949e;">Auto-Reconnect Retry</td><td>3.0 seconds backoff</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Hazard Thresholds -->
+        <div class="worker-panel">
+          <div class="ph"><span class="ph-icon ph-warn">⚠️</span><span class="ph-title">Hazard Detection &amp; Cooldown Parameters</span></div>
+          <table class="worker-table">
+            <tbody>
+              <tr><td style="color:#8b949e;width:200px;">Gas Hazard Threshold</td><td style="font-weight:600;color:#ff7b72;">400 ADC (Provisional Raw)</td></tr>
+              <tr><td style="color:#8b949e;">MQ-2 Analog Pin</td><td style="font-weight:600;color:#e6edf3;">Pin A0 (Analog 0–1023)</td></tr>
+              <tr><td style="color:#8b949e;">Relay Pin &amp; Polarity</td><td>Pin 7 (Active-LOW: LOW=ON)</td></tr>
+              <tr><td style="color:#8b949e;">Buzzer Pin</td><td>Pin 8 (Active-HIGH)</td></tr>
+              <tr><td style="color:#8b949e;">Warning LED Pin</td><td>Pin 9 (Active-HIGH)</td></tr>
+              <tr><td style="color:#8b949e;">Alert Debounce Cooldown</td><td>4.0 seconds</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="mid-row" style="grid-template-columns: 1fr 1fr;">
+        <!-- Vision & Inference Settings -->
+        <div class="worker-panel">
+          <div class="ph"><span class="ph-icon ph-info">🧠</span><span class="ph-title">YOLO11 Model &amp; Camera Pipeline</span></div>
+          <table class="worker-table">
+            <tbody>
+              <tr><td style="color:#8b949e;width:200px;">Model Checkpoint</td><td style="font-weight:600;color:#3fb950;">models/best.pt</td></tr>
+              <tr><td style="color:#8b949e;">Model Architecture</td><td>YOLO11 PyTorch DetectionModel</td></tr>
+              <tr><td style="color:#8b949e;">Confidence Threshold</td><td>0.35 (35%)</td></tr>
+              <tr><td style="color:#8b949e;">Camera Backend</td><td>OpenCV DirectShow (cv2.CAP_DSHOW)</td></tr>
+              <tr><td style="color:#8b949e;">Frame Dimension</td><td>640 × 480 px</td></tr>
+              <tr><td style="color:#8b949e;">Model Readiness</td><td id="set-model-ready">Checking...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Verified Classes & Enforced PPE -->
+        <div class="worker-panel">
+          <div class="ph"><span class="ph-icon ph-ok">🛡️</span><span class="ph-title">Monitored Classes &amp; Compliance Rules</span></div>
+          <div style="padding:14px;display:flex;flex-direction:column;gap:12px;">
+            <div>
+              <div style="font-size:11px;color:#8b949e;text-transform:uppercase;margin-bottom:6px;">Mandatory PPE (Checked per Worker):</div>
+              <div>
+                <span class="ppe-tag" style="padding:4px 8px;font-size:11px;">Helmet (Class 4)</span>
+                <span class="ppe-tag" style="padding:4px 8px;font-size:11px;">Vest (Class 7)</span>
+                <span class="ppe-tag" style="padding:4px 8px;font-size:11px;">Glass (Class 2)</span>
+                <span class="ppe-tag" style="padding:4px 8px;font-size:11px;">Glove (Class 3)</span>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#8b949e;text-transform:uppercase;margin-bottom:6px;">All Model Checkpoint Classes (model.names):</div>
+              <div id="set-classes-list" style="color:#c9d1d9;font-size:12px;line-height:1.5;">
+                Boots, Ear-protection, Glass, Glove, Helmet, Mask, Person, Vest
+              </div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#8b949e;text-transform:uppercase;margin-bottom:6px;">API Health Diagnostic:</div>
+              <a href="/api/health" target="_blank" style="color:#58a6ff;font-size:12px;text-decoration:none;">🔗 Open /api/health</a>
+              &nbsp;|&nbsp;
+              <a href="/api/telemetry" target="_blank" style="color:#58a6ff;font-size:12px;text-decoration:none;">🔗 Open /api/telemetry</a>
+              &nbsp;|&nbsp;
+              <a href="/video_feed" target="_blank" style="color:#58a6ff;font-size:12px;text-decoration:none;">🔗 Open /video_feed</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+<script>
+  // ── Clock ───────────────────────────────────────────────────────────────────
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+      now.toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) + ', ' +
+      now.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // ── Toggle helper ───────────────────────────────────────────────────────────
+  function setToggle(id, labelId, val) {
+    const on = !!val;
+    document.getElementById(id).className = 'toggle-dot' + (on ? ' on' : '');
+    const lbl = document.getElementById(labelId);
+    lbl.textContent = on ? 'ON' : 'OFF';
+    lbl.className = 'toggle-label' + (on ? ' on' : '');
+  }
+
+  // ── Fetch telemetry ─────────────────────────────────────────────────────────
+  async function fetchTelemetry() {
+    try {
+      const r = await fetch('/api/telemetry');
+      const d = await r.json();
+
+      // Cards
+      const total = (d.safe_workers || 0) + (d.unsafe_workers || 0);
+      const safeEl = document.getElementById('c-safe');
+      safeEl.textContent = `${d.safe_workers || 0} / ${total}`;
+
+      const cSafeSub = document.getElementById('c-safe-sub');
+      cSafeSub.textContent = total === 0 ? 'No workers detected' : `${d.unsafe_workers || 0} worker(s) need attention`;
+      cSafeSub.className = 'card-sub ' + (d.unsafe_workers > 0 ? 'sub-warn' : 'sub-ok');
+
+      const viol = d.unsafe_workers || 0;
+      document.getElementById('c-viol').textContent = viol;
+      const cViolSub = document.getElementById('c-viol-sub');
+      cViolSub.textContent = viol === 0 ? 'All compliant' : `${viol} violation(s)`;
+      cViolSub.className = 'card-sub ' + (viol > 0 ? 'sub-danger' : 'sub-ok');
+
+      const connected = d.connection === 'CONNECTED';
+      const targetPort = d.port || 'COM23';
+      const lastTime = d.last_telemetry_time || 'Never';
+
+      // Gas Card
+      const cGasVal = document.getElementById('c-gas');
+      const cGasSub = document.getElementById('c-gas-sub');
+      if (connected) {
+        if (d.gas_ppm !== null && d.gas_ppm !== undefined) {
+          cGasVal.textContent = `${d.gas_ppm} ppm`;
+        } else {
+          cGasVal.textContent = `${d.gas_raw || 0} ADC`;
+        }
+        if (d.gas_status === 'HAZARD') {
+          cGasSub.textContent = 'HAZARD DETECTED';
+          cGasSub.className = 'card-sub sub-danger';
+        } else if (d.gas_status === 'UNKNOWN') {
+          cGasSub.textContent = 'UNKNOWN (STALE)';
+          cGasSub.className = 'card-sub sub-warn';
+        } else {
+          cGasSub.textContent = 'SAFE';
+          cGasSub.className = 'card-sub sub-ok';
+        }
+      } else {
+        cGasVal.textContent = 'N/A';
+        cGasSub.textContent = 'Sensor Disconnected';
+        cGasSub.className = 'card-sub sub-neutral';
+      }
+
+      // Fan Card
+      const cFanVal = document.getElementById('c-fan');
+      const cFanSub = document.getElementById('c-fan-sub');
+      if (connected) {
+        cFanVal.textContent = d.fan ? 'ON' : 'OFF';
+        cFanSub.textContent = d.fan ? 'Commanded ON' : 'Commanded OFF';
+        cFanSub.className = 'card-sub ' + (d.fan ? 'sub-ok' : 'sub-neutral');
+      } else {
+        cFanVal.textContent = 'OFFLINE';
+        cFanSub.textContent = 'Arduino Disconnected';
+        cFanSub.className = 'card-sub sub-neutral';
+      }
+
+      // Connection Card
+      const connEl = document.getElementById('c-conn');
+      connEl.textContent = d.connection || 'DISCONNECTED';
+      connEl.className = 'card-value ' + (connected ? 'sub-ok' : 'sub-disconn');
+      const connSub = document.getElementById('c-conn-sub');
+      connSub.textContent = connected ? `Active on ${targetPort} · ${lastTime}` : `${targetPort} not connected`;
+
+      // Controls panel header timestamp
+      const ctrlLastSeen = document.getElementById('ctrl-last-seen');
+      if (ctrlLastSeen) {
+        ctrlLastSeen.textContent = connected ? `Last update: ${lastTime}` : `Offline (${lastTime})`;
+      }
+
+      // Gas panel
+      const gPpm = document.getElementById('g-ppm');
+      const gRaw = document.getElementById('g-raw');
+      const gStatus = document.getElementById('g-status');
+      if (connected) {
+        gPpm.textContent = d.gas_ppm_display || (d.gas_ppm !== null ? `${d.gas_ppm} ppm` : 'Uncalibrated');
+        gRaw.textContent = d.gas_raw !== undefined ? `${d.gas_raw} ADC` : '0 ADC';
+        if (d.gas_status === 'HAZARD') {
+          gStatus.textContent = 'HAZARD';
+          gStatus.className = 'gas-sub gas-danger';
+        } else if (d.gas_status === 'UNKNOWN') {
+          gStatus.textContent = 'UNKNOWN';
+          gStatus.className = 'gas-sub sub-warn';
+        } else {
+          gStatus.textContent = 'SAFE';
+          gStatus.className = 'gas-sub gas-ok';
+        }
+      } else {
+        gPpm.textContent = 'Disconnected';
+        gRaw.textContent = 'N/A';
+        gStatus.textContent = 'DISCONNECTED';
+        gStatus.className = 'gas-sub sub-neutral';
+      }
+
+      // Toggles (Hardware confirmed if connected, offline indicator otherwise)
+      if (connected) {
+        setToggle('t-fan', 'tl-fan', d.fan);
+        setToggle('t-buzzer', 'tl-buzzer', d.buzzer);
+        setToggle('t-led', 'tl-led', d.led);
+      } else {
+        setToggle('t-fan', 'tl-fan', 0);
+        document.getElementById('tl-fan').textContent = 'OFFLINE';
+        setToggle('t-buzzer', 'tl-buzzer', 0);
+        document.getElementById('tl-buzzer').textContent = 'OFFLINE';
+        setToggle('t-led', 'tl-led', 0);
+        document.getElementById('tl-led').textContent = 'OFFLINE';
+      }
+
+      // Camera stats
+      const safe = d.safe_workers || 0;
+      const unsafe = d.unsafe_workers || 0;
+      const detected = safe + unsafe;
+      document.getElementById('cam-stats').textContent =
+        detected > 0 ? `${detected} people detected | ${unsafe} violation(s)` : 'No people detected';
+
+      // Worker table
+      const workers = d.worker_details || [];
+      const tbody = document.getElementById('workerTableBody');
+      if (workers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="worker-empty">No workers detected</td></tr>';
+      } else {
+        tbody.innerHTML = workers.map(w => {
+          const ppeTags = (w.ppe || []).map(p => `<span class="ppe-tag">${p} ✓</span>`).join(' ');
+          const missTags = (w.missing || []).map(p => `<span class="ppe-tag missing">${p} ✗</span>`).join(' ');
+          const badge = w.status === 'SAFE'
+            ? '<span class="status-badge safe">SAFE</span>'
+            : '<span class="status-badge violation">VIOLATION</span>';
+          return `<tr>
+            <td>Worker ${w.id}</td>
+            <td>${ppeTags}${missTags}</td>
+            <td>${badge}</td>
+          </tr>`;
+        }).join('');
+      }
+
+      // ── Update Dedicated Telemetry View ──
+      const telJsonPre = document.getElementById('telemetryJsonPre');
+      if (telJsonPre) {
+        telJsonPre.textContent = JSON.stringify(d, null, 2);
+      }
+      const telGasRaw = document.getElementById('tel-gas-raw');
+      if (telGasRaw) {
+        telGasRaw.textContent = connected ? `${d.gas_raw !== undefined ? d.gas_raw : 0} ADC` : 'N/A';
+        const telGasSub = document.getElementById('tel-gas-sub');
+        if (telGasSub) {
+          if (connected) {
+            telGasSub.textContent = (d.gas_status === 'HAZARD') ? 'HAZARD DETECTED' : ((d.gas_status === 'UNKNOWN') ? 'UNKNOWN (STALE)' : 'SAFE');
+            telGasSub.className = 'card-sub ' + ((d.gas_status === 'HAZARD') ? 'sub-danger' : 'sub-ok');
+          } else {
+            telGasSub.textContent = 'DISCONNECTED';
+            telGasSub.className = 'card-sub sub-neutral';
+          }
+        }
+      }
+      const telFanState = document.getElementById('tel-fan-state');
+      if (telFanState) {
+        telFanState.textContent = connected ? (d.fan ? 'ON' : 'OFF') : 'OFFLINE';
+        const telFanSub = document.getElementById('tel-fan-sub');
+        if (telFanSub) {
+          telFanSub.textContent = connected ? (d.fan ? 'Commanded ON (Pin 7, LOW)' : 'Commanded OFF (Pin 7, HIGH)') : 'Arduino Disconnected';
+        }
+      }
+      const telConnState = document.getElementById('tel-conn-state');
+      if (telConnState) {
+        telConnState.textContent = d.connection || 'DISCONNECTED';
+        telConnState.className = 'card-value ' + (connected ? 'sub-ok' : 'sub-disconn');
+        const telConnSub = document.getElementById('tel-conn-sub');
+        if (telConnSub) {
+          telConnSub.textContent = connected ? `Port: ${targetPort} @ 9600 baud · Last: ${lastTime}` : `${targetPort} not connected`;
+        }
+      }
+      const telBuzzerState = document.getElementById('tel-buzzer-state');
+      if (telBuzzerState) {
+        telBuzzerState.textContent = connected ? (d.buzzer ? 'ACTIVE' : 'INACTIVE') : 'OFFLINE';
+      }
+      const telLedState = document.getElementById('tel-led-state');
+      if (telLedState) {
+        telLedState.textContent = connected ? (d.led ? 'ACTIVE' : 'INACTIVE') : 'OFFLINE';
+      }
+      const telWorkers = document.getElementById('tel-workers');
+      if (telWorkers) {
+        telWorkers.textContent = `${d.safe_workers || 0} Safe / ${d.unsafe_workers || 0} Unsafe`;
+        const telWorkersSub = document.getElementById('tel-workers-sub');
+        if (telWorkersSub) {
+          telWorkersSub.textContent = `Overall: ${d.overall_status || 'NORMAL'}`;
+          telWorkersSub.className = 'card-sub ' + (d.unsafe_workers > 0 ? 'sub-danger' : 'sub-ok');
+        }
+      }
+    } catch (e) {
+      console.warn('Telemetry fetch error', e);
+    }
+  }
+
+  // ── Fetch violations ────────────────────────────────────────────────────────
+  async function fetchViolations() {
+    try {
+      const r = await fetch('/api/violations');
+      const rows = await r.json();
+
+      // Dashboard table
+      const tbody = document.getElementById('violTableBody');
+      if (tbody) {
+        if (!rows || rows.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" class="viol-empty">No violations recorded yet.</td></tr>';
+        } else {
+          tbody.innerHTML = rows.map(v => {
+            const imgHtml = v.image
+              ? `<a href="${v.image}" target="_blank" class="viol-view-btn">
+                  <img src="${v.image}" class="viol-img" onerror="this.style.display='none'"> 👁 View
+                 </a>`
+              : `<div class="viol-img-placeholder">📷</div>`;
+            return `<tr>
+              <td>${v.time}</td>
+              <td>${v.worker}</td>
+              <td><span class="issue-badge">${v.issue}</span></td>
+              <td>${imgHtml}</td>
+            </tr>`;
+          }).join('');
+        }
+      }
+
+      // Dedicated Violations view table
+      const totalCountEl = document.getElementById('viol-total-count');
+      if (totalCountEl) totalCountEl.textContent = rows ? rows.length : 0;
+
+      const tbodyFull = document.getElementById('violTableBodyFull');
+      if (tbodyFull) {
+        if (!rows || rows.length === 0) {
+          tbodyFull.innerHTML = '<tr><td colspan="4" class="viol-empty">No violations recorded yet.</td></tr>';
+        } else {
+          tbodyFull.innerHTML = rows.map(v => {
+            const imgHtml = v.image
+              ? `<a href="${v.image}" target="_blank" class="viol-view-btn">
+                  <img src="${v.image}" class="viol-img" onerror="this.style.display='none'"> 👁 View Evidence
+                 </a>`
+              : `<div class="viol-img-placeholder">⚠️</div>`;
+            return `<tr>
+              <td>${v.time}</td>
+              <td><strong>${v.worker}</strong></td>
+              <td><span class="issue-badge">${v.issue}</span></td>
+              <td>${imgHtml}</td>
+            </tr>`;
+          }).join('');
+        }
+      }
+    } catch (e) {
+      console.warn('Violations fetch error', e);
+    }
+  }
+
+  // ── View Switching & Sidebar Navigation ────────────────────────────────────
+  function switchView(viewName) {
+    // 1. Highlight active menu item
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    const targetNav = document.getElementById('nav-' + viewName);
+    if (targetNav) targetNav.classList.add('active');
+
+    // 2. Seamlessly move single cameraPanel to active container to preserve live stream
+    const cameraPanel = document.getElementById('cameraPanel');
+    if (viewName === 'livefeed') {
+      const liveSlot = document.getElementById('livefeed-cam-slot');
+      if (liveSlot && cameraPanel) liveSlot.appendChild(cameraPanel);
+    } else {
+      const dashSlot = document.getElementById('dashboard-cam-slot');
+      if (dashSlot && cameraPanel) dashSlot.appendChild(cameraPanel);
+    }
+
+    // 3. Show/hide views
+    const allViews = ['dashboard', 'livefeed', 'violations', 'telemetry', 'settings'];
+    allViews.forEach(v => {
+      const pane = document.getElementById('view-' + v);
+      if (pane) {
+        pane.style.display = (v === viewName) ? 'flex' : 'none';
+      }
+    });
+
+    // 4. Update URL hash
+    window.location.hash = viewName;
+
+    // 5. Trigger immediate view data updates
+    if (viewName === 'violations') fetchViolations();
+    if (viewName === 'telemetry') fetchTelemetry();
+    if (viewName === 'settings') fetchSettings();
+  }
+
+  // ── Fetch settings / health ────────────────────────────────────────────────
+  async function fetchSettings() {
+    try {
+      const r = await fetch('/api/health');
+      const d = await r.json();
+      const setPort = document.getElementById('set-port');
+      if (setPort) setPort.textContent = d.arduino_port || 'COM23';
+
+      const setConn = document.getElementById('set-conn-status');
+      if (setConn) {
+        setConn.innerHTML = (d.arduino_status === 'CONNECTED')
+          ? '<span class="status-badge safe">CONNECTED</span>'
+          : '<span class="status-badge violation">DISCONNECTED</span>';
+      }
+
+      const setModel = document.getElementById('set-model-ready');
+      if (setModel) {
+        setModel.innerHTML = d.model_loaded
+          ? '<span class="status-badge safe">LOADED &amp; ONLINE</span>'
+          : '<span class="status-badge violation">ERROR</span>';
+      }
+
+      const setClasses = document.getElementById('set-classes-list');
+      if (setClasses && d.classes && Array.isArray(d.classes)) {
+        setClasses.textContent = d.classes.join(', ');
+      }
+    } catch (e) {
+      console.warn('Settings fetch error', e);
+    }
+  }
+
+  function fetchAll() {
+    fetchTelemetry();
+    fetchViolations();
+    fetchSettings();
+  }
+
+  function scrollToViolations() {
+    switchView('violations');
+  }
+
+  // Listen for hash changes
+  window.addEventListener('hashchange', () => {
+    const h = window.location.hash.replace('#', '');
+    if (['dashboard', 'livefeed', 'violations', 'telemetry', 'settings'].includes(h)) {
+      switchView(h);
+    }
+  });
+
+  // Check initial hash on load
+  if (window.location.hash) {
+    const initH = window.location.hash.replace('#', '');
+    if (['dashboard', 'livefeed', 'violations', 'telemetry', 'settings'].includes(initH)) {
+      switchView(initH);
+    }
+  }
+
+  // ── Poll ────────────────────────────────────────────────────────────────────
+  fetchAll();
+  setInterval(fetchAll, 2000);
+</script>
+</body>
+</html>
